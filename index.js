@@ -1,7 +1,7 @@
 const express = require("express");
-require("dotenv").config();
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
+require("dotenv").config();
 
 const app = express();
 
@@ -13,6 +13,28 @@ const client = new MongoClient(uri);
 
 async function run() {
   try {
+    const userCollection = client.db("summerDB").collection("users");
+
+    app.get("/users", async (req, res) => {
+      const cursor = userCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const existingUser = await userCollection.findOne(query);
+
+      if (existingUser) {
+        return res.send({ message: "User already exists" });
+      }
+
+      const result = await userCollection.insertOne(user);
+      console.log(`A document was inserted with the _id: ${result.insertedId}`);
+      res.send(result);
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
