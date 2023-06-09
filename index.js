@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId } = require("mongodb");
 require("dotenv").config();
 
 const app = express();
@@ -31,7 +31,21 @@ async function run() {
       }
 
       const result = await userCollection.insertOne(user);
-      console.log(`A document was inserted with the _id: ${result.insertedId}`);
+      console.log(`A user was inserted with the _id: ${result.insertedId}`);
+      res.send(result);
+    });
+
+    app.patch("/users/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+
+      const updateDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      console.log(`A user was made as admin`);
       res.send(result);
     });
 
