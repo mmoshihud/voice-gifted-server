@@ -42,7 +42,17 @@ async function run() {
       res.send({ token });
     });
 
-    app.get("/users", verifyJWT, async (req, res) => {
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "admin") {
+        return res.status(403).send("forbidden message");
+      }
+      next();
+    };
+
+    app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
       const cursor = userCollection.find();
       const result = await cursor.toArray();
       res.send(result);
@@ -85,7 +95,21 @@ async function run() {
         },
       };
       const result = await userCollection.updateOne(filter, updateDoc);
-      console.log(`A user was made as admin`);
+      console.log(`A user was made as a admin`);
+      res.send(result);
+    });
+
+    app.patch("/users/instructor/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+
+      const updateDoc = {
+        $set: {
+          role: "instructor",
+        },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      console.log(`A user was made as an instructor`);
       res.send(result);
     });
 
