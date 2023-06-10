@@ -19,6 +19,7 @@ const verifyJWT = (req, res, next) => {
 
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
+      //todo message
       return res.status(401).send("Unauthorized access");
     }
     req.decoded = decoded;
@@ -44,6 +45,19 @@ async function run() {
     app.get("/users", verifyJWT, async (req, res) => {
       const cursor = userCollection.find();
       const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get("/users/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+
+      if (req.decoded.email !== email) {
+        res.send({ admin: false });
+      }
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const result = { admin: user?.role === "admin" };
       res.send(result);
     });
 
