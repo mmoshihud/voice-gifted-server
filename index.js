@@ -167,6 +167,34 @@ async function run() {
       res.send(result);
     });
 
+    app.patch("/class/permission/:id", async (req, res) => {
+      const id = req.params.id;
+      const { permission } = req.body;
+      const filter = { _id: new ObjectId(id) };
+
+      if (permission === "approved") {
+        const updateDoc = {
+          $set: {
+            status: "approved",
+          },
+        };
+        const result = await classCollection.updateOne(filter, updateDoc);
+        console.log(`Class has been approved`);
+        res.send(result);
+      } else if (permission === "denied") {
+        const updateDoc = {
+          $set: {
+            status: "denied",
+          },
+        };
+        const result = await classCollection.updateOne(filter, updateDoc);
+        console.log(`Class has been denied`);
+        res.send(result);
+      } else {
+        res.status(400).send("Invalid request.");
+      }
+    });
+
     app.get(
       "/classes/:email",
       verifyJWT,
