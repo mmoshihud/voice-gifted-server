@@ -33,11 +33,12 @@ const client = new MongoClient(uri);
 async function run() {
   try {
     const userCollection = client.db("summerDB").collection("users");
+    const classCollection = client.db("summerDB").collection("classes");
 
     app.post("/jwt", (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
+        expiresIn: "6h",
       });
       res.send({ token });
     });
@@ -47,6 +48,16 @@ async function run() {
       const query = { email: email };
       const user = await userCollection.findOne(query);
       if (user?.role !== "admin") {
+        return res.status(403).send("forbidden message");
+      }
+      next();
+    };
+
+    const verifyInstructor = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      if (user?.role !== "instructor") {
         return res.status(403).send("forbidden message");
       }
       next();
@@ -110,6 +121,13 @@ async function run() {
       };
       const result = await userCollection.updateOne(filter, updateDoc);
       console.log(`A user was made as an instructor`);
+      res.send(result);
+    });
+
+    app.post("/classes", verifyJWT, verifyInstructor, async (req, res) => {
+      const classData = req.body;
+      const result = await classCollection.insertOne(classData);
+      console.log(`A class was inserted with the _id: ${result.insertedId}`);
       res.send(result);
     });
 
