@@ -124,12 +124,26 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/classes", verifyJWT, async (req, res) => {
+      const cursor = classCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     app.post("/classes", verifyJWT, verifyInstructor, async (req, res) => {
       const classData = req.body;
       const result = await classCollection.insertOne(classData);
       console.log(`A class was inserted with the _id: ${result.insertedId}`);
       res.send(result);
     });
+
+    app.get("/classes/:email", verifyJWT, verifyInstructor, async (req, res) => {
+        const email = req.params.email;
+        const cursor = classCollection.find({ instructorEmail: email });
+        const result = await cursor.toArray();
+        res.send(result);
+      }
+    );
 
     await client.db("admin").command({ ping: 1 });
     console.log(
