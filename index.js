@@ -137,17 +137,46 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/classes/:email", verifyJWT, verifyInstructor, async (req, res) => {
+    app.get("/class/edit/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const classData = await classCollection.findOne(query);
+      res.send(classData);
+    });
+
+    app.put("/class/update/:id", async (req, res) => {
+      const id = req.params.id;
+      const toy = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedToy = {
+        $set: {
+          name: toy.name,
+          image: toy.image,
+          price: toy.price,
+          availableSeats: toy.availableSeats,
+          status: "pending",
+        },
+      };
+
+      const result = await classCollection.updateOne(
+        filter,
+        updatedToy,
+        options
+      );
+      res.send(result);
+    });
+
+    app.get(
+      "/classes/:email",
+      verifyJWT,
+      verifyInstructor,
+      async (req, res) => {
         const email = req.params.email;
         const cursor = classCollection.find({ instructorEmail: email });
         const result = await cursor.toArray();
         res.send(result);
       }
-    );
-
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
     );
   } finally {
     // Ensures that the client will close when you finish/error
