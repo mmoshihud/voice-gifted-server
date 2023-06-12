@@ -34,6 +34,7 @@ async function run() {
   try {
     const userCollection = client.db("summerDB").collection("users");
     const classCollection = client.db("summerDB").collection("classes");
+    const cartCollection = client.db("summerDB").collection("carts");
 
     app.post("/jwt", (req, res) => {
       const user = req.body;
@@ -79,6 +80,19 @@ async function run() {
       const query = { email: email };
       const user = await userCollection.findOne(query);
       const result = { admin: user?.role === "admin" };
+      res.send(result);
+    });
+
+    app.get("/users/student/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+
+      if (req.decoded.email !== email) {
+        res.send({ student: false });
+      }
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const result = { student: user?.role === "student" };
       res.send(result);
     });
 
@@ -206,6 +220,26 @@ async function run() {
         res.send(result);
       }
     );
+
+    app.get("/all-classes", async (req, res) => {
+      const cursor = classCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get("/carts", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const cursor = cartCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.post("/carts", async (req, res) => {
+      const item = req.body;
+      const result = await cartCollection.insertOne(item);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
   }
