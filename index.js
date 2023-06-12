@@ -306,6 +306,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/users/role/instructor", async (req, res) => {
+      const query = { role: "instructor" };
+      const cursor = userCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     app.get("/enrollments", async (req, res) => {
       const email = req.query.email;
       const query = { studentEmail: email };
