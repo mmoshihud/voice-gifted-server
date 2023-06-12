@@ -37,6 +37,7 @@ async function run() {
     const classCollection = client.db("summerDB").collection("classes");
     const cartCollection = client.db("summerDB").collection("carts");
     const paymentCollection = client.db("summerDB").collection("payments");
+    const enrolmentCollection = client.db("summerDB").collection("enrollments");
 
     app.post("/jwt", (req, res) => {
       const user = req.body;
@@ -95,6 +96,19 @@ async function run() {
       const query = { email: email };
       const user = await userCollection.findOne(query);
       const result = { student: user?.role === "student" };
+      res.send(result);
+    });
+
+    app.get("/users/instructor/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+
+      if (req.decoded.email !== email) {
+        res.send({ instructor: false });
+      }
+
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const result = { instructor: user?.role === "instructor" };
       res.send(result);
     });
 
@@ -224,7 +238,8 @@ async function run() {
     );
 
     app.get("/all-classes", async (req, res) => {
-      const cursor = classCollection.find();
+      const query = { status: "approved" };
+      const cursor = classCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -243,11 +258,18 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/carts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await cartCollection.deleteOne(query);
+      console.log("Successfully Deleted ID:", id);
+      res.send(result);
+    });
+
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
       const amount = price * 100;
 
-      // Create a PaymentIntent with the order amount and currency
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: "usd",
@@ -268,7 +290,49 @@ async function run() {
       };
       const deleteResult = await cartCollection.deleteMany(query);
 
-      res.send({ insertResult, deleteResult });
+      const updateResult = await classCollection.updateMany(
+        { _id: { $in: payment.classItems.map((id) => new ObjectId(id)) } },
+        { $inc: { availableSeats: -1 } }
+      );
+
+      res.send({ insertResult, deleteResult, updateResult });
+    });
+
+    app.get("/payments", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const cursor = paymentCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get("/enrollments", async (req, res) => {
+      const email = req.query.email;
+      const query = { studentEmail: email };
+      const cursor = enrolmentCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.post("/enrollments/classes", verifyJWT, async (req, res) => {
+      const enrollment = req.body;
+      const insertResult = await enrolmentCollection.insertOne(enrollment);
+      res.send(insertResult);
+    });
+
+    app.patch("/feedback/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const feedback = req.body.feedback;
+      const filter = { _id: new ObjectId(id) };
+
+      const updateDoc = {
+        $set: {
+          feedback: feedback,
+        },
+      };
+      const result = await classCollection.updateOne(filter, updateDoc);
+      console.log(`A user was made as a admin`);
+      res.send(result);
     });
   } finally {
     // Ensures that the client will close when you finish/error
