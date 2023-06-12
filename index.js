@@ -3,6 +3,7 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { MongoClient, ObjectId } = require("mongodb");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 
 const app = express();
 
@@ -35,6 +36,7 @@ async function run() {
     const userCollection = client.db("summerDB").collection("users");
     const classCollection = client.db("summerDB").collection("classes");
     const cartCollection = client.db("summerDB").collection("carts");
+    const paymentCollection = client.db("summerDB").collection("payments");
 
     app.post("/jwt", (req, res) => {
       const user = req.body;
@@ -239,6 +241,34 @@ async function run() {
       const item = req.body;
       const result = await cartCollection.insertOne(item);
       res.send(result);
+    });
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = price * 100;
+
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/payments", verifyJWT, async (req, res) => {
+      const payment = req.body;
+      const insertResult = await paymentCollection.insertOne(payment);
+
+      const query = {
+        _id: { $in: payment.cartItems.map((id) => new ObjectId(id)) },
+      };
+      const deleteResult = await cartCollection.deleteMany(query);
+
+      res.send({ insertResult, deleteResult });
     });
   } finally {
     // Ensures that the client will close when you finish/error
